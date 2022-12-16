@@ -1,16 +1,23 @@
 import fs from "fs";
 
-type Move = "rock" | "paper" | "scissors";
-type Code = "A" | "B" | "C" | "X" | "Y" | "Z";
+// Paper beats rock beats scissors beats paper...
+const movesInOrder = ["paper", "rock", "scissors"] as const;
+
+type Move = typeof movesInOrder[number];
+type OpponentCode = "A" | "B" | "C";
+type YourCode = "X" | "Y" | "Z";
 type Outcome = "win" | "lose" | "draw";
 
-const codeToMove: Record<Code, Move> = {
+const opponentCodeToMove: Record<OpponentCode, Move> = {
   A: "rock",
-  X: "rock",
   B: "paper",
-  Y: "paper",
   C: "scissors",
-  Z: "scissors",
+};
+
+const yourCodeToDesiredOutcome: Record<YourCode, Outcome> = {
+  X: "lose",
+  Y: "draw",
+  Z: "win",
 };
 
 const moveToPointValue: Record<Move, number> = {
@@ -25,24 +32,28 @@ const outcomeToPointValue: Record<Outcome, number> = {
   lose: 0,
 };
 
-const movesToOutcome = (opponentMove: Move, yourMove: Move): Outcome =>
-  opponentMove === yourMove
-    ? "draw"
-    : (opponentMove === "rock" && yourMove === "paper") ||
-      (opponentMove === "paper" && yourMove === "scissors") ||
-      (opponentMove === "scissors" && yourMove === "rock")
-    ? "win"
-    : "lose";
+const chooseMove = (opponentMove: Move, desiredOutcome: Outcome): Move => {
+  const opponentMoveIndex = movesInOrder.indexOf(opponentMove);
+  const winningMove =
+    movesInOrder[opponentMoveIndex - 1] ??
+    movesInOrder[movesInOrder.length - 1];
+  const losingMove = movesInOrder[opponentMoveIndex + 1] ?? movesInOrder[0];
+  return desiredOutcome === "draw"
+    ? opponentMove
+    : desiredOutcome === "win"
+    ? winningMove
+    : losingMove;
+};
 
 const totalScore = fs
   .readFileSync(process.stdin.fd, "utf-8")
   .split("\n")
   .slice(0, -1) // ignore newline at end
   .map(([opponentCode, _, yourCode]) => {
-    const opponentMove = codeToMove[opponentCode as Code];
-    const yourMove = codeToMove[yourCode as Code];
-    const outcome = movesToOutcome(opponentMove, yourMove);
-    return outcomeToPointValue[outcome] + moveToPointValue[yourMove];
+    const opponentMove = opponentCodeToMove[opponentCode as OpponentCode];
+    const yourDesiredOutcome = yourCodeToDesiredOutcome[yourCode as YourCode];
+    const yourMove = chooseMove(opponentMove, yourDesiredOutcome);
+    return outcomeToPointValue[yourDesiredOutcome] + moveToPointValue[yourMove];
   })
   .reduce((a, b) => a + b, 0);
 
