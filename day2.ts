@@ -1,9 +1,16 @@
 import fs from "fs";
 
-// Paper beats rock beats scissors beats paper...
-const movesInOrder = ["paper", "rock", "scissors"] as const;
+const winningMoves: Record<Move, Move> = {
+  paper: "scissors",
+  rock: "paper",
+  scissors: "rock",
+};
+const losingMoves = Object.fromEntries(
+  // losing is the opposite of winning
+  Object.entries(winningMoves).map(([key, value]) => [value, key])
+) as Record<Move, Move>;
 
-type Move = typeof movesInOrder[number];
+type Move = "paper" | "rock" | "scissors";
 type OpponentCode = "A" | "B" | "C";
 type YourCode = "X" | "Y" | "Z";
 type Outcome = "win" | "lose" | "draw";
@@ -32,19 +39,6 @@ const outcomeToPointValue: Record<Outcome, number> = {
   lose: 0,
 };
 
-const chooseMove = (opponentMove: Move, desiredOutcome: Outcome): Move => {
-  const opponentMoveIndex = movesInOrder.indexOf(opponentMove);
-  const winningMove =
-    movesInOrder[opponentMoveIndex - 1] ??
-    movesInOrder[movesInOrder.length - 1];
-  const losingMove = movesInOrder[opponentMoveIndex + 1] ?? movesInOrder[0];
-  return desiredOutcome === "draw"
-    ? opponentMove
-    : desiredOutcome === "win"
-    ? winningMove
-    : losingMove;
-};
-
 const totalScore = fs
   .readFileSync(process.stdin.fd, "utf-8")
   .split("\n")
@@ -52,7 +46,12 @@ const totalScore = fs
   .map(([opponentCode, _, yourCode]) => {
     const opponentMove = opponentCodeToMove[opponentCode as OpponentCode];
     const yourDesiredOutcome = yourCodeToDesiredOutcome[yourCode as YourCode];
-    const yourMove = chooseMove(opponentMove, yourDesiredOutcome);
+    const yourMove =
+      yourDesiredOutcome === "draw"
+        ? opponentMove
+        : yourDesiredOutcome === "win"
+        ? winningMoves[opponentMove]
+        : losingMoves[opponentMove];
     return outcomeToPointValue[yourDesiredOutcome] + moveToPointValue[yourMove];
   })
   .reduce((a, b) => a + b, 0);
