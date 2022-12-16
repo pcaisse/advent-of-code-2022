@@ -5,8 +5,15 @@ import fs from "fs";
 const priority = (letter: string): number =>
   letter.charCodeAt(0) - (letter.toUpperCase() === letter ? 38 : 96);
 
-const commonLetters = (first: string, second: string): string[] =>
-  Array.from(uniqueLetters(first).intersection(uniqueLetters(second)));
+const commonLetters = (sacks: string[]): string[] =>
+  Array.from(
+    sacks
+      .slice(1)
+      .reduce(
+        (acc, sack) => acc.intersection(uniqueLetters(sack)),
+        uniqueLetters(sacks[0])
+      )
+  );
 
 const uniqueLetters = (s: string): Set<string> => new Set(Array.from(s));
 
@@ -14,11 +21,14 @@ const result = fs
   .readFileSync(process.stdin.fd, "utf-8")
   .split("\n")
   .filter((s) => s)
-  .flatMap((sack) => {
-    const middleIndex = sack.length / 2;
-    const first = sack.substring(0, middleIndex);
-    const second = sack.substring(middleIndex, sack.length);
-    return commonLetters(first, second).map(priority);
+  .reduce((groups: string[][], sack: string, index) => {
+    const groupIndex = Math.floor(index / 3);
+    if (!groups[groupIndex]) groups[groupIndex] = [];
+    groups[groupIndex].push(sack);
+    return groups;
+  }, [] as string[][])
+  .flatMap((elfSacks) => {
+    return commonLetters(elfSacks).map(priority);
   })
   .reduce((a, b) => a + b, 0);
 
