@@ -9,8 +9,13 @@ function parseLine(line: string): RangePair {
     .map((s) => s.split("-").map((x) => parseInt(x, 10))) as RangePair;
 }
 
-function fullyContains([a1, a2]: Range, [b1, b2]: Range): boolean {
-  return (a1 >= b1 && a2 <= b2) || (b1 >= a1 && b2 <= a2);
+function overlaps([a1, a2]: Range, [b1, b2]: Range): boolean {
+  return (
+    (a2 >= b1 && a2 <= b2) ||
+    (a1 >= b1 && a1 <= b2) ||
+    (b2 >= a1 && b2 <= a2) ||
+    (b1 >= a1 && b1 <= a2)
+  );
 }
 
 const result = fs
@@ -19,7 +24,7 @@ const result = fs
   .filter((s) => s)
   .map((line) => {
     const [rangeA, rangeB] = parseLine(line);
-    return fullyContains(rangeA, rangeB) ? 1 : 0;
+    return overlaps(rangeA, rangeB) ? 1 : 0;
   })
   .reduce((a: number, b: number) => a + b, 0);
 
