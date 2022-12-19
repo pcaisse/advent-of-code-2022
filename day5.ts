@@ -47,7 +47,7 @@ function moveCrates(
     crates[fromStack - 1].length - numCrates,
     numCrates
   );
-  crates[toStack - 1].push(...cratesToMove.reverse());
+  crates[toStack - 1].push(...cratesToMove);
 }
 
 function topCrates(crates: Crates): string {
