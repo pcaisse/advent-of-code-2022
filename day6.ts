@@ -1,9 +1,11 @@
 import fs from "fs";
 
+const n = 14;
+
 const seqs = [...fs.readFileSync(process.stdin.fd, "utf-8").trim()].reduce(
   (charSeqs, _char, index, arr) => {
-    const seq = [arr[index - 3], arr[index - 2], arr[index - 1], arr[index]];
-    if (seq.every((val) => val !== undefined)) {
+    if (index >= n - 1) {
+      const seq = [...new Array(n).keys()].reverse().map((i) => arr[index - i]);
       return charSeqs.concat([seq]);
     }
     return charSeqs;
