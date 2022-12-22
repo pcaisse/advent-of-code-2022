@@ -1,14 +1,15 @@
 import fs from "fs";
 
-type Dirs = Record<string, F>;
+type Dirs = Record<string, Directory>;
 
 type File = { type: "file"; name: string; size: number };
 type Directory = {
   type: "dir";
   name: string;
-  files: F[];
+  files: File[];
   dirs: Dirs;
   parentDir: Directory | null;
+  absPath: string | null;
 };
 type F = File | Directory;
 
@@ -39,6 +40,7 @@ function parseCommandAndOutput(s: string): CommandAndOutput {
               files: [],
               dirs: {},
               parentDir: null,
+              absPath: null,
             }
           : { type: "file", size: Number(splits[0]), name: splits[1] };
       }),
@@ -52,9 +54,34 @@ const rootDir: Directory = {
   files: [],
   dirs: {},
   parentDir: null,
+  absPath: null,
 };
 
-const result = fs
+const sumFileSizes = (
+  filesystem: Dirs,
+  directorySizes: Record<string, number>,
+  parentAbsPaths: string[]
+): typeof directorySizes => {
+  Object.entries(filesystem).forEach(([_dirName, dir]) => {
+    if (!dir.absPath) {
+      throw new Error("absolute path is missing");
+    }
+    const dirSize = dir.files.reduce(
+      (total: number, f: File) => total + f.size,
+      0
+    );
+    directorySizes[dir.absPath] = dirSize;
+    parentAbsPaths.forEach((parentAbsPath) => {
+      directorySizes[parentAbsPath] += dirSize;
+    });
+    if (Object.keys(dir.dirs).length) {
+      sumFileSizes(dir.dirs, directorySizes, [...parentAbsPaths, dir.absPath]);
+    }
+  });
+  return directorySizes;
+};
+
+const filesystem = fs
   .readFileSync(process.stdin.fd, "utf-8")
   .split("$ ") // split by commands
   .filter((s) => s)
@@ -75,11 +102,21 @@ const result = fs
         }
         for (const f of commandAndOutput.fs) {
           if (f.type === "dir") {
+            f.parentDir = filesystem.currentDirectory;
             filesystem.currentDirectory.dirs[f.name] = f;
           } else {
             filesystem.currentDirectory.files.push(f);
           }
         }
+        filesystem.currentDirectory.absPath =
+          filesystem.currentDirectory.parentDir &&
+          filesystem.currentDirectory.parentDir.absPath
+            ? filesystem.currentDirectory.parentDir.absPath +
+              (filesystem.currentDirectory.parentDir.absPath === "/"
+                ? ""
+                : "/") +
+              filesystem.currentDirectory.name
+            : filesystem.currentDirectory.name;
       }
       return filesystem;
     },
@@ -89,4 +126,16 @@ const result = fs
     }
   );
 
-console.log(JSON.stringify(result, null, 4));
+const fileSizeLimit = 100000;
+
+const fileSizes = sumFileSizes(filesystem.dirs, {}, []);
+
+const result = Object.entries(fileSizes)
+  .map(([name, size]) => ({
+    name,
+    size,
+  }))
+  .filter(({ size }) => size <= fileSizeLimit)
+  .reduce((a, b) => a + b.size, 0);
+
+console.log(result);
