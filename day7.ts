@@ -126,16 +126,22 @@ const filesystem = fs
     }
   );
 
-const fileSizeLimit = 100000;
-
 const fileSizes = sumFileSizes(filesystem.dirs, {}, []);
 
-const result = Object.entries(fileSizes)
+const fileSizeList = Object.entries(fileSizes)
   .map(([name, size]) => ({
     name,
     size,
   }))
-  .filter(({ size }) => size <= fileSizeLimit)
-  .reduce((a, b) => a + b.size, 0);
+  .sort((a, b) => a.size - b.size);
 
-console.log(result);
+const totalDiskSpace = 70000000;
+const diskSpaceRequired = 30000000;
+const freeDiskSpace = totalDiskSpace - fileSizes["/"];
+const fileSizeMin = diskSpaceRequired - freeDiskSpace;
+
+const result = fileSizeList
+  .filter(({ size }) => size >= fileSizeMin)
+  .sort((a, b) => a.size - b.size);
+
+console.log(result[0].size);
