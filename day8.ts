@@ -6,8 +6,8 @@ const cols = lines[0].length;
 const rows = lines.length;
 
 interface Tree {
-  visible: boolean;
-  value: number;
+  score: number;
+  height: number;
 }
 
 const range = (size: number) => [...Array(size).keys()];
@@ -18,14 +18,14 @@ const isEdge = (rowIndex: number, colIndex: number) =>
   rowIndex === 0 ||
   rowIndex === rows - 1;
 
-const isTreeVisible = (
+const calcTreeScore = (
   grid: Tree[][],
   rowIndex: number,
   colIndex: number
-): boolean => {
+): number => {
   const tree = grid[rowIndex][colIndex];
-  const { value } = tree;
-  const isVisible = (tree: Tree) => tree.value < value;
+  const { height } = tree;
+  const isNotVisible = (tree: Tree) => tree.height >= height;
   const aboveTrees = range(rowIndex).map(
     (i) => grid[rowIndex - (i + 1)][colIndex]
   );
@@ -38,23 +38,20 @@ const isTreeVisible = (
   const rightTrees = range(cols - 1 - colIndex).map(
     (i) => grid[rowIndex][colIndex + (i + 1)]
   );
-  const isVisibleFromAbove = aboveTrees.every(isVisible);
-  const isVisibleFromBelow = belowTrees.every(isVisible);
-  const isVisibleFromRight = rightTrees.every(isVisible);
-  const isVisibleFromLeft = leftTrees.every(isVisible);
-  return (
-    isVisibleFromAbove ||
-    isVisibleFromBelow ||
-    isVisibleFromRight ||
-    isVisibleFromLeft
+  const withDefault = (value: number, defaultValue: number) =>
+    value === 0 ? defaultValue : value;
+  const scores = [aboveTrees, belowTrees, rightTrees, leftTrees].map(
+    (rowOfTrees) =>
+      withDefault(rowOfTrees.findIndex(isNotVisible) + 1, rowOfTrees.length)
   );
+  return scores.flat().reduce((total, score) => total * score, 1);
 };
 
 function setVisible(grid: Tree[][]) {
   for (let i = 0; i < rows; i++) {
     for (let j = 0; j < cols; j++) {
       const isEdgeTree = isEdge(i, j);
-      grid[i][j].visible = isEdgeTree ? true : isTreeVisible(grid, i, j);
+      grid[i][j].score = isEdgeTree ? 0 : calcTreeScore(grid, i, j);
     }
   }
   return grid;
@@ -64,13 +61,11 @@ function setVisible(grid: Tree[][]) {
 const grid = [];
 for (let i = 0; i < rows; i++) {
   grid[i] = [...new Array(cols)].map((_, index) => ({
-    visible: false,
-    value: Number(lines[i][index]),
+    score: 0,
+    height: Number(lines[i][index]),
   }));
 }
 
 const trees = setVisible(grid);
 
-console.log(
-  trees.flat().reduce((total, { visible }) => total + (visible ? 1 : 0), 0)
-);
+console.log(Math.max(...trees.flat().map(({ score }) => score)));
